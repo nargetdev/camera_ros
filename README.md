@@ -1,3 +1,25 @@
+# this fork provides "Best Effort" QoS by default
+
+This fork changes the default QoS reliability of publishers to Best Effort and adds a parameter to configure it at startup.
+
+- Affected topics: `~/image_raw`, `~/image_raw/compressed`, `~/camera_info`.
+- Default: Best Effort.
+- Parameter: `qos_reliability` (read-only, static at node construction).
+- Allowed values: `best_effort` (default), `reliable`.
+
+Examples:
+
+```sh
+# Default Best Effort (no param needed)
+ros2 run camera_ros camera_node
+
+# Override to Reliable at launch
+ros2 run camera_ros camera_node --ros-args -p qos_reliability:=reliable
+```
+
+---
+---
+
 # ROS 2 node for libcamera
 
 This ROS 2 node provides support for a variety of cameras via [libcamera](https://libcamera.org). Amongst others, this node supports V4L2 and [Raspberry Pi cameras](https://www.raspberrypi.com/documentation/computers/camera_software.html).

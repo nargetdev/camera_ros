@@ -47,6 +47,7 @@
 #include <rclcpp/parameter_value.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/time.hpp>
+#include <rclcpp/qos.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 #include <regex>
 #include <sensor_msgs/image_encodings.hpp>
@@ -324,11 +325,31 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
   param_descr_use_node_time.read_only = true;
   use_node_time = declare_parameter<bool>("use_node_time", false, param_descr_use_node_time);
 
+  // QoS reliability selection (read-only, applied at construction time)
+  rcl_interfaces::msg::ParameterDescriptor param_descr_qos_reliability;
+  param_descr_qos_reliability.description = "Publisher reliability for image and camera_info topics";
+  param_descr_qos_reliability.additional_constraints = "one of {best_effort, reliable}";
+  param_descr_qos_reliability.read_only = true;
+  const std::string qos_reliability = declare_parameter<std::string>(
+    "qos_reliability", "best_effort", param_descr_qos_reliability);
+
+  rclcpp::QoS qos_profile(1);
+  if (qos_reliability == "best_effort") {
+    qos_profile.best_effort();
+  }
+  else if (qos_reliability == "reliable") {
+    qos_profile.reliable();
+  }
+  else {
+    RCLCPP_WARN_STREAM(get_logger(), "invalid qos_reliability '" << qos_reliability << "', defaulting to best_effort");
+    qos_profile.best_effort();
+  }
+
   // publisher for raw and compressed image
-  pub_image = this->create_publisher<sensor_msgs::msg::Image>("~/image_raw", 1);
+  pub_image = this->create_publisher<sensor_msgs::msg::Image>("~/image_raw", qos_profile);
   pub_image_compressed =
-    this->create_publisher<sensor_msgs::msg::CompressedImage>("~/image_raw/compressed", 1);
-  pub_ci = this->create_publisher<sensor_msgs::msg::CameraInfo>("~/camera_info", 1);
+    this->create_publisher<sensor_msgs::msg::CompressedImage>("~/image_raw/compressed", qos_profile);
+  pub_ci = this->create_publisher<sensor_msgs::msg::CameraInfo>("~/camera_info", qos_profile);
 
   // start camera manager and check for cameras
   camera_manager.start();
