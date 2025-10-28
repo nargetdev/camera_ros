@@ -116,6 +116,9 @@ private:
 
   // compression quality parameter
   std::atomic_uint8_t jpeg_quality;
+  
+  // enable compression parameter
+  bool enable_compression;
 
   void
   requestComplete(libcamera::Request *const request);
@@ -329,7 +332,7 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
   rcl_interfaces::msg::ParameterDescriptor param_descr_enable_compression;
   param_descr_enable_compression.description = "enable JPEG compression for raw formats (disabled by default for performance)";
   param_descr_enable_compression.read_only = true;
-  declare_parameter<bool>("enable_compression", false, param_descr_enable_compression);
+  enable_compression = declare_parameter<bool>("enable_compression", false, param_descr_enable_compression);
 
   // QoS reliability selection (read-only, applied at construction time)
   rcl_interfaces::msg::ParameterDescriptor param_descr_qos_reliability;
@@ -702,8 +705,7 @@ CameraNode::process(libcamera::Request *const request)
 
         // Skip compression for raw formats to maximize performance
         // Only compress if explicitly requested via parameter
-        if (pub_image_compressed->get_subscription_count() && 
-            this->declare_parameter<bool>("enable_compression", false)) {
+        if (pub_image_compressed->get_subscription_count() && enable_compression) {
           try {
             compressImageMsg(*msg_img, *msg_img_compressed,
                              {cv::IMWRITE_JPEG_QUALITY, jpeg_quality});
