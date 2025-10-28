@@ -10,12 +10,12 @@ from launch_ros.descriptions import ComposableNode
 
 def generate_launch_description() -> LaunchDescription:
     """
-    Generate a launch description with for the camera node and a visualiser.
+    Generate a launch description optimized for maximum resolution and FPS
+    with raw sensor_msgs/Image publishing only (no compression).
 
     Returns
     -------
-        LaunchDescription: the launch description
-
+        LaunchDescription: the launch description optimized for raw performance
     """
     # parameters
     camera_param_name = "camera"
@@ -31,7 +31,7 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     format_param_name = "format"
-    format_param_default = str()
+    format_param_default = "SRGGB16"  # 16-bit Bayer RAW for maximum quality
     format_param = LaunchConfiguration(
         format_param_name,
         default=format_param_default,
@@ -39,20 +39,46 @@ def generate_launch_description() -> LaunchDescription:
     format_launch_arg = DeclareLaunchArgument(
         format_param_name,
         default_value=format_param_default,
-        description="pixel format"
+        description="pixel format (SRGGB16 for max quality, YUYV for max FPS)"
     )
 
-    # camera node
+    width_param_name = "width"
+    width_param_default = str(1920)  # Full HD width
+    width_param = LaunchConfiguration(
+        width_param_name,
+        default=width_param_default,
+    )
+    width_launch_arg = DeclareLaunchArgument(
+        width_param_name,
+        default_value=width_param_default,
+        description="image width"
+    )
+
+    height_param_name = "height"
+    height_param_default = str(1080)  # Full HD height
+    height_param = LaunchConfiguration(
+        height_param_name,
+        default=height_param_default,
+    )
+    height_launch_arg = DeclareLaunchArgument(
+        height_param_name,
+        default_value=height_param_default,
+        description="image height"
+    )
+
+    # camera node optimized for raw performance
     composable_nodes = [
         ComposableNode(
             package='camera_ros',
             plugin='camera::CameraNode',
             parameters=[{
                 "camera": camera_param,
-                "width": 1920,  # Maximum resolution for most Pi cameras
-                "height": 1080,  # Full HD
-                "format": "SRGGB16",  # 16-bit Bayer RAW for maximum quality
+                "width": width_param,
+                "height": height_param,
+                "format": format_param,
                 "role": "raw",  # Use raw stream role for maximum FPS
+                "enable_compression": False,  # Disable compression for max performance
+                "qos_reliability": "best_effort",  # Use best effort for max throughput
             }],
             extra_arguments=[{'use_intra_process_comms': True}],
         ),
@@ -82,4 +108,6 @@ def generate_launch_description() -> LaunchDescription:
         container,
         camera_launch_arg,
         format_launch_arg,
+        width_launch_arg,
+        height_launch_arg,
     ])

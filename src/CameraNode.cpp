@@ -325,6 +325,12 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
   param_descr_use_node_time.read_only = true;
   use_node_time = declare_parameter<bool>("use_node_time", false, param_descr_use_node_time);
 
+  // enable_compression parameter
+  rcl_interfaces::msg::ParameterDescriptor param_descr_enable_compression;
+  param_descr_enable_compression.description = "enable JPEG compression for raw formats (disabled by default for performance)";
+  param_descr_enable_compression.read_only = true;
+  declare_parameter<bool>("enable_compression", false, param_descr_enable_compression);
+
   // QoS reliability selection (read-only, applied at construction time)
   rcl_interfaces::msg::ParameterDescriptor param_descr_qos_reliability;
   param_descr_qos_reliability.description = "Publisher reliability for image and camera_info topics";
@@ -694,8 +700,10 @@ CameraNode::process(libcamera::Request *const request)
         msg_img->data.resize(buffer_info[buffer].size);
         memcpy(msg_img->data.data(), buffer_info[buffer].data, buffer_info[buffer].size);
 
-        // compress to jpeg
-        if (pub_image_compressed->get_subscription_count()) {
+        // Skip compression for raw formats to maximize performance
+        // Only compress if explicitly requested via parameter
+        if (pub_image_compressed->get_subscription_count() && 
+            this->declare_parameter<bool>("enable_compression", false)) {
           try {
             compressImageMsg(*msg_img, *msg_img_compressed,
                              {cv::IMWRITE_JPEG_QUALITY, jpeg_quality});
